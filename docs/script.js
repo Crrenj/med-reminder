@@ -1,12 +1,11 @@
+const BACKEND_URL = '/api/reminders'; // API sur Vercel
+
 const form = document.getElementById('reminderForm');
 const reminderList = document.getElementById('reminderList');
 
-// URL du backend (en local, assurez-vous que le serveur Node.js tourne sur le port 3000)
-const BACKEND_URL = 'https://med-reminder-c3j1.onrender.com';
-
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  
+
   const name = document.getElementById('name').value;
   const time = document.getElementById('time').value;
 

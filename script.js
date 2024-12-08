@@ -1,4 +1,4 @@
-import { supabase } from '../supabaseClient.js';
+import { supabase } from './supabaseClient.js';
 
 const signupForm = document.getElementById('signupForm');
 const loginForm = document.getElementById('loginForm');
@@ -29,18 +29,13 @@ signupForm.addEventListener('submit', async (e) => {
   const email = document.getElementById('signupEmail').value;
   const password = document.getElementById('signupPassword').value;
 
-  // Vérifier si l'utilisateur existe déjà
   const { data: existingUser } = await supabase.from('users').select('*').eq('email', email).single();
   if (existingUser) {
     alert('User already exists!');
     return;
   }
 
-  // Hachage du mot de passe avec bcrypt (coté frontend JS pur n'est pas recommandé, mais simplifions)
-  // Idéalement, vous gérez le hachage sur un backend Node. Ici on suppose que la sécurité n’est pas le point central.
-  // Juste pour exemple, on stocke le mot de passe en clair, ce qui n’est PAS recommandé !!!
-  // En production, utilisez des fonctions serverless ou un backend pour hacher.
-  
+  // Insertion de l'utilisateur (mot de passe en clair pour simplifier cet exemple, pas recommandé en prod)
   const { data, error } = await supabase.from('users').insert([{ email, password }]);
   if (error) {
     alert('Error: ' + error.message);
@@ -75,8 +70,7 @@ loginForm.addEventListener('submit', async (e) => {
 // -------------------- FONCTIONS UTILITAIRES --------------------
 
 async function loadCatalog() {
-  // Charger le catalogue global
-  const { data: catalog, error } = await supabase.from('medication_catalog').select('*');
+  const { data: catalog } = await supabase.from('medication_catalog').select('*');
   if (catalog) {
     catalogSelect.innerHTML = '';
     catalog.forEach(med => {
@@ -106,10 +100,13 @@ async function loadUserMedications() {
 }
 
 async function loadSchedules() {
+  const userMedIds = await getUserMedicationIds();
+  if (userMedIds.length === 0) return;
+
   const { data: schedules } = await supabase
     .from('schedules')
     .select('id, time, dose, unit, user_medication_id (id, medication_id (name))')
-    .in('user_medication_id', (await getUserMedicationIds()));
+    .in('user_medication_id', userMedIds);
 
   scheduleSelect.innerHTML = '';
   if (schedules) {
@@ -202,4 +199,3 @@ logTakenBtn.addEventListener('click', async () => {
     loadHistory();
   }
 });
-

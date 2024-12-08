@@ -8,19 +8,61 @@
 </head>
 <body>
   <h1>Medication Reminder</h1>
-  <form id="reminderForm">
-    <label for="name">Medication Name:</label>
-    <input type="text" id="name" name="name" required />
 
-    <label for="time">Reminder Time:</label>
-    <input type="time" id="time" name="time" required />
-
-    <button type="submit">Add Reminder</button>
+  <!-- Formulaire d'inscription -->
+  <form id="signupForm">
+    <h2>Signup</h2>
+    <input type="email" id="signupEmail" placeholder="Email" required />
+    <input type="password" id="signupPassword" placeholder="Password" required />
+    <button type="submit">Signup</button>
   </form>
 
-  <h2>Reminders</h2>
-  <ul id="reminderList"></ul>
+  <!-- Formulaire de connexion -->
+  <form id="loginForm">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email" required />
+    <input type="password" id="loginPassword" placeholder="Password" required />
+    <button type="submit">Login</button>
+  </form>
 
-  <script src="script.js"></script>
+  <!-- Section réservée aux utilisateurs connectés -->
+  <div id="appSection" style="display:none;">
+    <h2>Welcome!</h2>
+
+    <!-- Ajouter un médicament à l'utilisateur -->
+    <div>
+      <h3>Add a Medication from Catalog</h3>
+      <select id="catalogSelect"></select>
+      <input type="text" id="userMedicationNotes" placeholder="Notes" />
+      <button id="addUserMedicationBtn">Add to My Medications</button>
+    </div>
+
+    <!-- Ajouter un horaire de prise -->
+    <div>
+      <h3>Add a Schedule</h3>
+      <select id="userMedicationSelect"></select>
+      <input type="number" id="dose" placeholder="Dose" step="0.1" required />
+      <input type="text" id="unit" placeholder="Unit (mg, ml...)" required />
+      <input type="time" id="scheduleTime" required />
+      <button id="addScheduleBtn">Add Schedule</button>
+    </div>
+
+    <!-- Marquer une prise -->
+    <div>
+      <h3>Log a Medication as Taken</h3>
+      <select id="scheduleSelect"></select>
+      <button id="logTakenBtn">Mark as Taken</button>
+    </div>
+
+    <!-- Afficher l'historique -->
+    <div>
+      <h3>History</h3>
+      <ul id="historyList"></ul>
+    </div>
+
+  </div>
+
+  <script type="module" src="../supabaseClient.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>

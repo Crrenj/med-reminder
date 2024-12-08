@@ -5,18 +5,23 @@ body {
 }
 
 form {
-  margin-bottom: 20px;
+  margin: 20px auto;
+  max-width: 300px;
 }
 
-input {
-  margin: 5px;
-}
-
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-li {
+input, select {
+  display: block;
+  width: 100%;
   margin: 10px 0;
+  padding: 5px;
+}
+
+button {
+  padding: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+h1, h2, h3 {
+  margin-bottom: 10px;
 }

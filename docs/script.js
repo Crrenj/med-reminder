@@ -1,41 +1,205 @@
-const BACKEND_URL = '/api/reminders'; // API sur Vercel
+import { supabase } from '../supabaseClient.js';
 
-const form = document.getElementById('reminderForm');
-const reminderList = document.getElementById('reminderList');
+const signupForm = document.getElementById('signupForm');
+const loginForm = document.getElementById('loginForm');
+const appSection = document.getElementById('appSection');
 
-form.addEventListener('submit', async (e) => {
+const catalogSelect = document.getElementById('catalogSelect');
+const userMedicationNotes = document.getElementById('userMedicationNotes');
+const addUserMedicationBtn = document.getElementById('addUserMedicationBtn');
+
+const userMedicationSelect = document.getElementById('userMedicationSelect');
+const dose = document.getElementById('dose');
+const unit = document.getElementById('unit');
+const scheduleTime = document.getElementById('scheduleTime');
+const addScheduleBtn = document.getElementById('addScheduleBtn');
+
+const scheduleSelect = document.getElementById('scheduleSelect');
+const logTakenBtn = document.getElementById('logTakenBtn');
+
+const historyList = document.getElementById('historyList');
+
+let currentUser = null;
+
+// -------------------- AUTH --------------------
+
+// Signup
+signupForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const email = document.getElementById('signupEmail').value;
+  const password = document.getElementById('signupPassword').value;
 
-  const name = document.getElementById('name').value;
-  const time = document.getElementById('time').value;
+  // Vérifier si l'utilisateur existe déjà
+  const { data: existingUser } = await supabase.from('users').select('*').eq('email', email).single();
+  if (existingUser) {
+    alert('User already exists!');
+    return;
+  }
 
-  const response = await fetch(BACKEND_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, time }),
-  });
-
-  if (response.ok) {
-    const reminder = await response.json();
-    displayReminder(reminder);
-    form.reset();
+  // Hachage du mot de passe avec bcrypt (coté frontend JS pur n'est pas recommandé, mais simplifions)
+  // Idéalement, vous gérez le hachage sur un backend Node. Ici on suppose que la sécurité n’est pas le point central.
+  // Juste pour exemple, on stocke le mot de passe en clair, ce qui n’est PAS recommandé !!!
+  // En production, utilisez des fonctions serverless ou un backend pour hacher.
+  
+  const { data, error } = await supabase.from('users').insert([{ email, password }]);
+  if (error) {
+    alert('Error: ' + error.message);
   } else {
-    alert('Failed to add reminder.');
+    alert('Signup successful! Please log in.');
+    signupForm.reset();
   }
 });
 
-async function fetchReminders() {
-  const response = await fetch(BACKEND_URL);
-  if (response.ok) {
-    const reminders = await response.json();
-    reminders.forEach(displayReminder);
+// Login
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+
+  const { data: user, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).single();
+  if (error || !user) {
+    alert('Invalid credentials');
+  } else {
+    currentUser = user;
+    alert('Login successful!');
+    loginForm.style.display = 'none';
+    signupForm.style.display = 'none';
+    appSection.style.display = 'block';
+    loadCatalog();
+    loadUserMedications();
+    loadSchedules();
+    loadHistory();
+  }
+});
+
+// -------------------- FONCTIONS UTILITAIRES --------------------
+
+async function loadCatalog() {
+  // Charger le catalogue global
+  const { data: catalog, error } = await supabase.from('medication_catalog').select('*');
+  if (catalog) {
+    catalogSelect.innerHTML = '';
+    catalog.forEach(med => {
+      const option = document.createElement('option');
+      option.value = med.id;
+      option.textContent = med.name;
+      catalogSelect.appendChild(option);
+    });
   }
 }
 
-function displayReminder({ name, time }) {
-  const li = document.createElement('li');
-  li.textContent = `${name} at ${time}`;
-  reminderList.appendChild(li);
+async function loadUserMedications() {
+  const { data: meds } = await supabase
+    .from('user_medications')
+    .select('id, notes, medication_id (id, name)')
+    .eq('user_id', currentUser.id);
+
+  userMedicationSelect.innerHTML = '';
+  if (meds) {
+    meds.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = m.medication_id.name + (m.notes ? ` (${m.notes})` : '');
+      userMedicationSelect.appendChild(option);
+    });
+  }
 }
 
-fetchReminders();
+async function loadSchedules() {
+  const { data: schedules } = await supabase
+    .from('schedules')
+    .select('id, time, dose, unit, user_medication_id (id, medication_id (name))')
+    .in('user_medication_id', (await getUserMedicationIds()));
+
+  scheduleSelect.innerHTML = '';
+  if (schedules) {
+    schedules.forEach(sch => {
+      const option = document.createElement('option');
+      option.value = sch.id;
+      option.textContent = `${sch.user_medication_id.medication_id.name} at ${sch.time} [${sch.dose}${sch.unit}]`;
+      scheduleSelect.appendChild(option);
+    });
+  }
+}
+
+async function getUserMedicationIds() {
+  const { data: meds } = await supabase.from('user_medications').select('id').eq('user_id', currentUser.id);
+  return meds ? meds.map(m => m.id) : [];
+}
+
+async function loadHistory() {
+  const { data: logs } = await supabase
+    .from('logs')
+    .select('id, taken_at, status, schedule_id (time, user_medication_id (medication_id (name)))')
+    .order('taken_at', { ascending: false });
+
+  historyList.innerHTML = '';
+  if (logs) {
+    logs.forEach(log => {
+      const li = document.createElement('li');
+      const medName = log.schedule_id.user_medication_id.medication_id.name;
+      li.textContent = `[${log.status}] ${medName} taken at ${log.taken_at}`;
+      historyList.appendChild(li);
+    });
+  }
+}
+
+// -------------------- ACTIONS --------------------
+
+// Ajouter un médicament à l'utilisateur
+addUserMedicationBtn.addEventListener('click', async () => {
+  const medication_id = catalogSelect.value;
+  const notesVal = userMedicationNotes.value;
+
+  const { data, error } = await supabase.from('user_medications').insert([
+    { user_id: currentUser.id, medication_id, notes: notesVal }
+  ]);
+
+  if (error) {
+    alert('Error: ' + error.message);
+  } else {
+    alert('Medication added to your list!');
+    userMedicationNotes.value = '';
+    loadUserMedications();
+  }
+});
+
+// Ajouter un horaire
+addScheduleBtn.addEventListener('click', async () => {
+  const user_medication_id = userMedicationSelect.value;
+  const d = parseFloat(dose.value);
+  const u = unit.value;
+  const t = scheduleTime.value;
+
+  const { data, error } = await supabase.from('schedules').insert([
+    { user_medication_id, dose: d, unit: u, time: t }
+  ]);
+
+  if (error) {
+    alert('Error: ' + error.message);
+  } else {
+    alert('Schedule added!');
+    dose.value = '';
+    unit.value = '';
+    scheduleTime.value = '';
+    loadSchedules();
+  }
+});
+
+// Log a medication as taken
+logTakenBtn.addEventListener('click', async () => {
+  const schedule_id = scheduleSelect.value;
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase.from('logs').insert([
+    { schedule_id, taken_at: now, status: 'taken' }
+  ]);
+
+  if (error) {
+    alert('Error: ' + error.message);
+  } else {
+    alert('Medication logged as taken!');
+    loadHistory();
+  }
+});
+
